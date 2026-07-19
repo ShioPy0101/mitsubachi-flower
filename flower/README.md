@@ -123,3 +123,41 @@ npm run uninstall:dev
 - `docs/architecture.md`: 責務分離とデータフロー。
 - `docs/verification.md`: After Effects実機チェックリスト。
 - `docs/known-limitations.md`: 制約と未確認事項。
+
+## Windows調査メモ 2026-07-20
+
+この環境では `C:\Program Files\Adobe\Adobe After Effects 2022\Support Files\AfterFX.exe` を確認しました。製品バージョンは `22.5` です。
+
+開発用CEP拡張は次へ配置済みです。
+
+```text
+%APPDATA%\Adobe\CEP\extensions\mitsubachi-flower -> C:\Users\taku2\General\workspace\mitsubachi-flower\flower
+```
+
+AE 2022向けに未署名拡張の開発読み込み設定も有効化済みです。
+
+```text
+HKCU\Software\Adobe\CSXS.11\PlayerDebugMode = 1
+```
+
+Windowsでの確認手順:
+
+1. `cd flower`
+2. `npm install`
+3. `npm run test`
+4. `npm run doctor`
+5. `npm run install:dev`
+6. After Effects 2022を再起動する
+7. `Window > Extensions` または `Window > Extensions (Legacy)` から `flower development harness` を開く
+
+flowerのランタイム保存先候補:
+
+```text
+%LOCALAPPDATA%\Mitsubachi\Flower\cache
+%LOCALAPPDATA%\Mitsubachi\Flower\logs
+%APPDATA%\Mitsubachi\Flower\config
+```
+
+上記3ディレクトリはこのWindows環境で作成と書き込みを確認済みです。API health endpointはPowerShell/Node.jsから `200 OK` と `{"status":"ok"}` を確認済みですが、AEパネル内HTTPクライアントでの確認は未実施です。
+
+詳細な調査結果は `..\docs\flower\windows-investigation.md` を参照してください。

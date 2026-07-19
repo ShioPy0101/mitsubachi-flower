@@ -19,7 +19,8 @@ test("cachePathForHash is stable and shares cache across names with same extensi
 
 test("cachePathForHash can share content while keeping extension boundary explicit", () => {
   const hash = "sha256:abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd";
-  assert.match(cachePathForHash("/tmp/flower", hash, "日本語.mov"), /sha256\/ab\/abcdef.+\/payload\.mov$/);
+  const normalized = cachePathForHash("/tmp/flower", hash, "日本語.mov").replace(/\\/g, "/");
+  assert.match(normalized, /sha256\/ab\/abcdef.+\/payload\.mov$/);
 });
 
 test("ensureFixtureCached promotes a valid temporary copy and reuses existing cache", async () => {
@@ -56,3 +57,4 @@ async function tempDir(): Promise<string> {
   await mkdir(dir, { recursive: true });
   return dir;
 }
+
