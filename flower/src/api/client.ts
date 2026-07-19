@@ -6,9 +6,12 @@ import { FlowerApiError, httpStatusToCode, toFlowerError } from "./errors";
 import { ApiRequestResult, DownloadHeaders, FlowerDeviceAuthorization, FlowerDriveItem, FlowerDriveItemsPage, FlowerMe, FlowerTokenResponse } from "./types";
 import { validateDeviceAuthorization, validateDriveItem, validateDriveItemsPage, validateFlowerMe, validateTokenResponse } from "./validation";
 
+export type AccessTokenProvider = () => string | undefined;
+
 export interface FlowerApiClientOptions {
   version: string;
   platformLabel?: string;
+  accessTokenProvider?: AccessTokenProvider;
 }
 
 export interface StreamResponse {
@@ -24,9 +27,11 @@ const DEVICE_CODE_GRANT = "urn:ietf:params:oauth:grant-type:device_code";
 
 export class FlowerApiClient {
   private readonly userAgent: string;
+  private readonly accessTokenProvider: AccessTokenProvider;
 
   constructor(private readonly config: FlowerConfig, options: FlowerApiClientOptions) {
     this.userAgent = "mitsubachi-flower/" + options.version + " AE-CEP " + (options.platformLabel || "Windows");
+    this.accessTokenProvider = options.accessTokenProvider || (() => this.config.developmentAccessToken || undefined);
   }
 
   async startDeviceAuthorization(input: { clientName: string; clientVersion: string; deviceName: string }, signal?: AbortSignal): Promise<ApiRequestResult<FlowerDeviceAuthorization>> {
@@ -102,14 +107,15 @@ export class FlowerApiClient {
   }
 
   private async requestStream(method: HttpMethod, requestPath: string, operation: string, signal?: AbortSignal, body?: string, accept = "application/octet-stream", authRequired = true, redirects = 0): Promise<StreamResponse> {
-    if (authRequired && !this.config.developmentAccessToken) {
-      throw new FlowerApiError({ code: "config_error", message: "Development access token is not configured.", retryable: false, operation });
+    const accessToken = this.accessTokenProvider();
+    if (authRequired && !accessToken) {
+      throw new FlowerApiError({ code: "config_error", message: "Access token is not configured.", retryable: false, operation });
     }
     const url = new URL(requestPath, this.config.apiBaseUrl + "/");
     const timeoutMs = operation === "download_started" ? this.config.downloadTimeoutMs : this.config.requestTimeoutMs;
     const headers: Record<string, string> = { Accept: accept, "User-Agent": this.userAgent };
     if (body !== undefined) headers["Content-Type"] = "application/json";
-    if (authRequired && this.config.developmentAccessToken) headers.Authorization = "Bearer " + this.config.developmentAccessToken;
+    if (authRequired && accessToken) headers.Authorization = "Bearer " + accessToken;
     return new Promise((resolve, reject) => {
       const transport = url.protocol === "https:" ? https : http;
       const request = transport.request(url, { method, headers, timeout: timeoutMs }, (res) => {
@@ -208,3 +214,6 @@ async function drain(stream: Readable): Promise<void> {
     // drain
   }
 }
+
+
+
