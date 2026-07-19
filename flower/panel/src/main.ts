@@ -4,6 +4,7 @@ import { FlowerApiClient } from "../../src/api/client";
 import { FlowerApiError } from "../../src/api/errors";
 import { FlowerDriveItem, FlowerMe } from "../../src/api/types";
 import { writeAuditLog } from "../../src/auditLog";
+import { AuthenticationState, runDeviceAuthorizationFlow } from "../../src/auth/deviceFlow";
 import { commitDownloadedStream, flowerCacheRoot, inspectCache, verifyCachedPayload, CacheInspection, DownloadProgress } from "../../src/cache";
 import { FlowerConfig, loadFlowerConfig } from "../../src/config";
 import { createProjectMetadata } from "../../src/metadata";
@@ -33,6 +34,12 @@ let listGeneration = 0;
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
 let currentDownload: { itemId: string; controller: AbortController } | null = null;
 let latestRequestId = "none";
+let memoryAccessToken: string | undefined;
+let authState: AuthenticationState = { status: "signed_out" };
+let signInGeneration = 0;
+let signInController: AbortController | null = null;
+let verificationUrlToOpen: string | null = null;
+let userCodeToCopy: string | null = null;
 
 function byId<T extends HTMLElement>(id: string): T {
   const element = document.getElementById(id);
@@ -118,8 +125,8 @@ async function loadConfigIntoState(): Promise<void> {
     return;
   }
   config = loaded.config;
-  client = new FlowerApiClient(config, { version: packageJson.version });
-  setConnection(config.developmentAccessToken ? "Configured" : "Token missing", config.developmentAccessToken ? "warn" : "error");
+  client = new FlowerApiClient(config, { version: packageJson.version, accessTokenProvider: () => memoryAccessToken || config?.developmentAccessToken || undefined });
+  setConnection(memoryAccessToken ? "Signed in" : config.developmentAccessToken ? "Configured with development token" : "Signed out", memoryAccessToken ? "ok" : config.developmentAccessToken ? "warn" : "warn");
   setText("api-base-url", config.apiBaseUrl);
   log("ui", "config loaded from " + config.configPath + " token=" + (config.developmentAccessToken ? "[configured]" : "[missing]"));
   await audit("info", "config_loaded", "Config loaded.", { result: "success" });
@@ -134,6 +141,95 @@ async function probeAe(): Promise<void> {
     setText("bridge-status", "ERROR", "error");
     logError(error, "ae_probe");
   }
+}
+
+function setAuthState(next: AuthenticationState): void {
+  authState = next;
+  if (next.status === "signed_out") {
+    verificationUrlToOpen = null;
+    userCodeToCopy = null;
+    setText("auth-state", "Signed out", "warn");
+    setText("verification-url", "none");
+    setText("user-code", "none");
+    setText("auth-expires-at", "none");
+  } else if (next.status === "authorizing") {
+    verificationUrlToOpen = next.verificationUriComplete || next.verificationUri;
+    userCodeToCopy = next.userCode;
+    setText("auth-state", "Waiting for browser authorization", "warn");
+    setText("verification-url", next.verificationUriComplete || next.verificationUri);
+    setText("user-code", next.userCode);
+    setText("auth-expires-at", new Date(next.expiresAt).toISOString());
+  } else if (next.status === "signed_in") {
+    verificationUrlToOpen = null;
+    userCodeToCopy = null;
+    setText("auth-state", "Signed in", "ok");
+    setText("verification-url", "none");
+    setText("user-code", "none");
+    setText("auth-expires-at", "none");
+  } else {
+    setText("auth-state", next.message, "error");
+  }
+  updateButtons();
+}
+
+async function signIn(): Promise<void> {
+  if (!client) {
+    await loadConfigIntoState();
+    if (!client) return;
+  }
+  signOut(false);
+  const generation = ++signInGeneration;
+  const controller = new AbortController();
+  signInController = controller;
+  let browserOpened = false;
+  try {
+    const result = await runDeviceAuthorizationFlow({
+      client,
+      input: { clientName: "mitsubachi-flower", clientVersion: packageJson.version, deviceName: "After Effects local" },
+      signal: controller.signal,
+      onState: (state) => {
+        if (generation !== signInGeneration) return;
+        setAuthState(state);
+        if (state.status === "authorizing" && !browserOpened) {
+          browserOpened = true;
+          openVerificationUrl(state.verificationUriComplete || state.verificationUri);
+        }
+      },
+      onSlowDown: (interval) => log("api", "device authorization slow_down; next poll interval=" + interval + "s")
+    });
+    if (generation !== signInGeneration) return;
+    memoryAccessToken = result.token.accessToken;
+    setAuthState({ status: "signed_in" });
+    await audit("info", "device_authorization_completed", "Device authorization completed.", { result: "success", organizationId: result.token.organizationId });
+    await connect();
+  } catch (error) {
+    if (generation !== signInGeneration) return;
+    memoryAccessToken = undefined;
+    const flowerError = logError(error, "device_authorization_failed");
+    setAuthState({ status: flowerError.details.code === "cancelled" ? "signed_out" : "error", message: flowerError.details.message } as AuthenticationState);
+    await audit(flowerError.details.code === "cancelled" ? "warn" : "error", "device_authorization_failed", flowerError.details.message, { result: flowerError.details.code === "cancelled" ? "cancelled" : "failure", requestId: flowerError.details.requestId, errorCategory: flowerError.details.serverCode || flowerError.details.code });
+  } finally {
+    if (signInController === controller) signInController = null;
+    updateButtons();
+  }
+}
+
+function signOut(clearUi = true): void {
+  signInGeneration += 1;
+  if (signInController) signInController.abort();
+  signInController = null;
+  memoryAccessToken = undefined;
+  me = null;
+  items = [];
+  itemStates = new Map();
+  nextCursor = null;
+  renderItems();
+  setText("user-display-name", "unknown");
+  setText("organization-name", "unknown");
+  setText("scopes", "none");
+  setConnection("Signed out", "warn");
+  if (clearUi) setAuthState({ status: "signed_out" });
+  updateButtons();
 }
 
 async function connect(): Promise<void> {
@@ -379,6 +475,12 @@ function formatBytes(value: number): string {
   return (unit === 0 ? String(amount) : amount.toFixed(1)) + " " + units[unit];
 }
 
+function openVerificationUrl(url: string): void {
+  execFile("rundll32.exe", ["url.dll,FileProtocolHandler", url], (error) => {
+    if (error) log("error", "open verification URL failed: " + error.message);
+  });
+}
+
 function openFolder(folderPath: string): void {
   execFile("explorer.exe", [folderPath], (error) => {
     if (error) log("error", "open folder failed: " + error.message);
@@ -386,7 +488,7 @@ function openFolder(folderPath: string): void {
 }
 
 async function copyDiagnostics(): Promise<void> {
-  const diagnostics = anonymizeDiagnostics(JSON.stringify({ connection: byId("connection-status").textContent, apiBaseUrl: config?.apiBaseUrl, flowerVersion: packageJson.version, aeVersion: byId("ae-version").textContent, user: me ? { id: me.id, displayName: me.displayName, organizationId: me.organizationId, organizationName: me.organizationName, scopes: me.scopes } : null, latestRequestId, itemCount: items.length, currentDownload: currentDownload?.itemId || null, logs }, null, 2));
+  const diagnostics = anonymizeDiagnostics(JSON.stringify({ connection: byId("connection-status").textContent, authStatus: authState.status, apiBaseUrl: config?.apiBaseUrl, flowerVersion: packageJson.version, aeVersion: byId("ae-version").textContent, user: me ? { id: me.id, displayName: me.displayName, organizationId: me.organizationId, organizationName: me.organizationName, scopes: me.scopes } : null, latestRequestId, itemCount: items.length, currentDownload: currentDownload?.itemId || null, logs }, null, 2));
   try {
     await navigator.clipboard.writeText(diagnostics);
     log("ui", "diagnostics copied");
@@ -396,6 +498,8 @@ async function copyDiagnostics(): Promise<void> {
 }
 
 function bindEvents(): void {
+  byId("btn-sign-in").addEventListener("click", () => signIn());
+  byId("btn-sign-out").addEventListener("click", () => signOut());
   byId("btn-connect").addEventListener("click", () => connect());
   byId("btn-reload").addEventListener("click", () => reloadFiles(false));
   byId("btn-load-more").addEventListener("click", () => reloadFiles(true));
@@ -403,6 +507,10 @@ function bindEvents(): void {
   byId("btn-open-cache").addEventListener("click", () => openFolder(flowerCacheRoot()));
   byId("btn-open-log").addEventListener("click", () => openFolder(path.join(process.env.LOCALAPPDATA || "", "Mitsubachi", "Flower", "logs")));
   byId("btn-copy-diagnostics").addEventListener("click", () => copyDiagnostics());
+  byId("btn-open-verification").addEventListener("click", () => verificationUrlToOpen && openVerificationUrl(verificationUrlToOpen));
+  byId("btn-copy-verification").addEventListener("click", () => verificationUrlToOpen && navigator.clipboard.writeText(verificationUrlToOpen));
+  byId("btn-copy-user-code").addEventListener("click", () => userCodeToCopy && navigator.clipboard.writeText(userCodeToCopy));
+  byId("btn-cancel-sign-in").addEventListener("click", () => signOut());
   byId("btn-scan").addEventListener("click", () => scanProjectMetadata(true).catch((error) => logError(error, "scan_project_metadata")));
   byId<HTMLInputElement>("search-input").addEventListener("input", () => {
     if (searchTimer) clearTimeout(searchTimer);
@@ -419,4 +527,5 @@ function bindEvents(): void {
 }
 
 document.addEventListener("DOMContentLoaded", () => initialize().catch((error) => logError(error, "initialize")));
+
 

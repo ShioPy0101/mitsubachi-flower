@@ -25,6 +25,7 @@ export interface FlowerApiErrorDetails {
   retryable: boolean;
   operation: string;
   causeName?: string;
+  serverCode?: string;
 }
 
 export class FlowerApiError extends Error {
@@ -58,3 +59,4 @@ export function httpStatusToCode(status: number, serverCode?: string): FlowerApi
   if (status >= 500) return "server_error";
   return "invalid_response";
 }
+

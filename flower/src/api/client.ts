@@ -174,7 +174,7 @@ export class FlowerApiClient {
     const code = httpStatusToCode(status, serverCode);
     const retryable = code === "rate_limited" || code === "server_error" || serverCode === "authorization_pending" || serverCode === "slow_down";
     const safeMessage = code === "unauthorized" ? "Authentication failed." : code === "forbidden" || code === "insufficient_scope" ? "Access to this flower resource is forbidden." : serverMessage && status < 500 ? serverMessage : "Flower API request failed.";
-    return new FlowerApiError({ code, message: safeMessage, retryable, operation, httpStatus: status, requestId });
+    return new FlowerApiError({ code, message: safeMessage, retryable, operation, httpStatus: status, requestId, serverCode });
   }
 }
 
@@ -214,6 +214,7 @@ async function drain(stream: Readable): Promise<void> {
     // drain
   }
 }
+
 
 
 
