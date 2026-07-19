@@ -1,5 +1,5 @@
 import { FlowerApiError } from "./errors";
-import { FlowerDriveItem, FlowerDriveItemsPage, FlowerMe } from "./types";
+import { FlowerDeviceAuthorization, FlowerDriveItem, FlowerDriveItemsPage, FlowerMe, FlowerTokenResponse } from "./types";
 
 const SHA256_RE = /^sha256:[a-f0-9]{64}$/;
 
@@ -30,6 +30,11 @@ function numberId(value: unknown, field: string, operation: string): string {
 function nonNegativeSize(value: unknown, operation: string): number {
   if (typeof value === "number" && Number.isSafeInteger(value) && value >= 0) return value;
   throw new FlowerApiError({ code: "invalid_response", message: "API response has an invalid file size.", retryable: false, operation });
+}
+
+function positiveInteger(value: unknown, field: string, operation: string): number {
+  if (typeof value === "number" && Number.isSafeInteger(value) && value > 0) return value;
+  throw new FlowerApiError({ code: "invalid_response", message: "API response has an invalid " + field + ".", retryable: false, operation });
 }
 
 export function validateFlowerMe(raw: unknown): FlowerMe {
@@ -84,6 +89,35 @@ export function validateDriveItemsPage(raw: unknown): FlowerDriveItemsPage {
   const meta = record.meta && typeof record.meta === "object" ? (record.meta as Record<string, unknown>) : null;
   const nextCursor = optionalString(pagination?.next_cursor) || optionalString(meta?.next_cursor);
   return { items: itemsRaw.map((item) => validateDriveItem(item, operation)), nextCursor };
+}
+
+export function validateDeviceAuthorization(raw: unknown): FlowerDeviceAuthorization {
+  const operation = "device_authorization_start";
+  if (!raw || typeof raw !== "object") throw invalid(operation, "API returned an invalid device authorization response.");
+  const record = raw as Record<string, unknown>;
+  return {
+    deviceCode: stringValue(record.device_code, "device_code", operation),
+    userCode: stringValue(record.user_code, "user_code", operation),
+    verificationUri: stringValue(record.verification_uri, "verification_uri", operation),
+    verificationUriComplete: optionalString(record.verification_uri_complete) || undefined,
+    expiresIn: positiveInteger(record.expires_in, "expires_in", operation),
+    interval: positiveInteger(record.interval, "interval", operation)
+  };
+}
+
+export function validateTokenResponse(raw: unknown): FlowerTokenResponse {
+  const operation = "device_token_poll";
+  if (!raw || typeof raw !== "object") throw invalid(operation, "API returned an invalid token response.");
+  const record = raw as Record<string, unknown>;
+  const tokenType = stringValue(record.token_type, "token_type", operation);
+  if (tokenType !== "Bearer") throw invalid(operation, "API returned an unsupported token type.");
+  return {
+    tokenType,
+    accessToken: stringValue(record.access_token, "access_token", operation),
+    expiresIn: positiveInteger(record.expires_in, "expires_in", operation),
+    scope: stringValue(record.scope, "scope", operation),
+    organizationId: numberId(record.organization_id, "organization_id", operation)
+  };
 }
 
 function unwrapData(raw: unknown): unknown {

@@ -79,3 +79,41 @@ test("FlowerApiClient supports list query and cursor parameters", async () => {
     assert.equal(result.data.items[0].id, "1");
   });
 });
+
+test("FlowerApiClient starts device authorization without Authorization header", async () => {
+  await withServer((req, res) => {
+    assert.equal(req.url, "/api/v1/flower/device_authorizations");
+    assert.equal(req.headers.authorization, undefined);
+    let body = "";
+    req.on("data", (chunk) => (body += chunk));
+    req.on("end", () => {
+      assert.deepEqual(JSON.parse(body), { client_name: "mitsubachi-flower", client_version: "0.1.0", device_name: "After Effects local" });
+      res.writeHead(200, { "content-type": "application/json", "x-request-id": "rid-device" });
+      res.end(JSON.stringify({ device_code: "dev", user_code: "ABCD-EFGH", verification_uri: "http://127.0.0.1:3001/flower/activate", verification_uri_complete: "http://127.0.0.1:3001/flower/activate?user_code=ABCD-EFGH", expires_in: 599, interval: 5 }));
+    });
+  }, async (baseUrl) => {
+    const client = new FlowerApiClient(config(baseUrl), { version: "0.1.0" });
+    const result = await client.startDeviceAuthorization({ clientName: "mitsubachi-flower", clientVersion: "0.1.0", deviceName: "After Effects local" });
+    assert.equal(result.data.userCode, "ABCD-EFGH");
+    assert.equal(result.requestId, "rid-device");
+  });
+});
+
+test("FlowerApiClient polls device token with OAuth device grant", async () => {
+  await withServer((req, res) => {
+    assert.equal(req.url, "/api/v1/flower/tokens");
+    assert.equal(req.headers.authorization, undefined);
+    let body = "";
+    req.on("data", (chunk) => (body += chunk));
+    req.on("end", () => {
+      assert.deepEqual(JSON.parse(body), { grant_type: "urn:ietf:params:oauth:grant-type:device_code", device_code: "dev" });
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ token_type: "Bearer", access_token: "secret", expires_in: 900, scope: "flower:read flower:download", organization_id: "1" }));
+    });
+  }, async (baseUrl) => {
+    const client = new FlowerApiClient(config(baseUrl), { version: "0.1.0" });
+    const result = await client.pollDeviceToken("dev");
+    assert.equal(result.data.tokenType, "Bearer");
+    assert.equal(result.data.scope, "flower:read flower:download");
+  });
+});

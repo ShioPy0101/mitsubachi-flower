@@ -25,3 +25,26 @@ test("validateDriveItemsPage reads items and next_cursor", () => {
   assert.equal(page.items.length, 1);
   assert.equal(page.nextCursor, "n");
 });
+
+test("validateDeviceAuthorization maps device authorization response", async () => {
+  const { validateDeviceAuthorization } = await import("../src/api/validation");
+  assert.deepEqual(validateDeviceAuthorization({ device_code: "dev", user_code: "ABCD-EFGH", verification_uri: "http://127.0.0.1:3001/flower/activate", verification_uri_complete: "http://127.0.0.1:3001/flower/activate?user_code=ABCD-EFGH", expires_in: 599, interval: 5 }), {
+    deviceCode: "dev",
+    userCode: "ABCD-EFGH",
+    verificationUri: "http://127.0.0.1:3001/flower/activate",
+    verificationUriComplete: "http://127.0.0.1:3001/flower/activate?user_code=ABCD-EFGH",
+    expiresIn: 599,
+    interval: 5
+  });
+});
+
+test("validateTokenResponse maps bearer token response", async () => {
+  const { validateTokenResponse } = await import("../src/api/validation");
+  assert.deepEqual(validateTokenResponse({ token_type: "Bearer", access_token: "secret", expires_in: 900, scope: "flower:read flower:download", organization_id: "1" }), {
+    tokenType: "Bearer",
+    accessToken: "secret",
+    expiresIn: 900,
+    scope: "flower:read flower:download",
+    organizationId: "1"
+  });
+});
