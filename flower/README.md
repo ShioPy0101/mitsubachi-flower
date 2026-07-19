@@ -263,3 +263,27 @@ npm run install:dev
 20. logsへtokenが出ていないことを確認する。
 
 AE GUIはこの自動テストでは操作していません。上記は人間が行う結合確認です。
+
+## Device Authorization Sign in
+
+The panel now supports OAuth 2.0 Device Authorization Grant sign-in. The access token is held only in memory while the CEP panel is running. It is not written to `localStorage`, `sessionStorage`, IndexedDB, files, Windows Credential Manager, logs, diagnostics, cache metadata, or AE project metadata. After After Effects or the panel exits, sign in again.
+
+Sign-in flow:
+
+1. Open the flower panel in After Effects.
+2. Click `Sign in`.
+3. The panel starts `POST /api/v1/flower/device_authorizations`.
+4. If possible, the panel opens `verification_uri_complete` in the external browser.
+5. If the browser does not open, copy the displayed verification URL and user code.
+6. Sign in to Mitsubachi in the browser and allow Flower access.
+7. Return to After Effects. The panel polls `POST /api/v1/flower/tokens` until authorization completes.
+8. After the token is issued, the panel calls `/api/v1/flower/me` and then enables file listing, download, cache, and import.
+
+Token polling behavior:
+
+- `authorization_pending`: keep polling with the current interval.
+- `slow_down`: increase the poll interval by 5 seconds and continue.
+- `access_denied`, `expired_token`, `invalid_grant`, `invalid_request`: stop polling and show a concise error.
+- `Sign out`, `Cancel Sign in`, panel teardown, a new sign-in attempt, or expiry stops the current polling loop.
+
+`developmentAccessToken` remains supported for development and mock-server tests, but normal UI usage should prefer `Sign in`. In production builds, plaintext development tokens must not be used. Windows Credential Manager support is intentionally not implemented yet.
