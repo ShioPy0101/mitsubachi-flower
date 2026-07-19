@@ -161,3 +161,105 @@ flowerのランタイム保存先候補:
 上記3ディレクトリはこのWindows環境で作成と書き込みを確認済みです。API health endpointはPowerShell/Node.jsから `200 OK` と `{"status":"ok"}` を確認済みですが、AEパネル内HTTPクライアントでの確認は未実施です。
 
 詳細な調査結果は `..\docs\flower\windows-investigation.md` を参照してください。
+
+## Rails flower API Phase 1 PoC
+
+This harness can connect to the Mitsubachi Rails flower Phase 1 API from the After Effects 2022 CEP panel using a development-only Bearer token.
+
+Implemented flow:
+
+1. `GET /api/v1/flower/me`
+2. `GET /api/v1/flower/drive_items?query=...&cursor=...&limit=50`
+3. `GET /api/v1/flower/drive_items/:id`
+4. `GET /api/v1/flower/drive_items/:id/download`
+5. stream download to `%LOCALAPPDATA%\Mitsubachi\Flower\cache`
+6. SHA-256 and file size verification
+7. atomic cache commit
+8. AE import through ExtendScript
+9. `FootageItem.comment` flower metadata block write
+10. JSONL audit logs in `%LOCALAPPDATA%\Mitsubachi\Flower\logs`
+
+### Development config
+
+Create this file locally. Do not commit it.
+
+```text
+%APPDATA%\Mitsubachi\Flower\config\development.json
+```
+
+Example shape:
+
+```json
+{
+  "apiBaseUrl": "https://mitsubachi-api.shiosalt.com",
+  "developmentAccessToken": "paste-development-token-here",
+  "requestTimeoutMs": 20000,
+  "downloadTimeoutMs": 300000,
+  "maxConcurrentDownloads": 1
+}
+```
+
+`developmentAccessToken` is for development/test only. It is intentionally rejected when `FLOWER_ENV=production` or `NODE_ENV=production`. Do not use this plaintext token config for production builds. Production auth should replace this path with the flower device-code flow and OS credential storage.
+
+`apiBaseUrl` is normalized by removing trailing slashes. HTTPS is required except localhost development URLs such as `http://localhost:3001`.
+
+### Cache structure
+
+```text
+%LOCALAPPDATA%\Mitsubachi\Flower\cache\
+  sha256\
+    ab\
+      abcdef0123456789...\
+        payload.mp4
+        metadata.json
+```
+
+The original display name is stored in `metadata.json`; it is not used to build the payload path. Tokens, Authorization headers, download URLs, cookies, and internal redirect paths are not stored.
+
+### AE metadata block
+
+Imported footage receives a dedicated block in `FootageItem.comment`:
+
+```text
+[MITSUBACHI_FLOWER_BEGIN]
+{"schema":"mitsubachi.flower/v1",...}
+[MITSUBACHI_FLOWER_END]
+```
+
+Existing comments are preserved. Existing flower blocks are replaced. Multiple flower blocks are treated as an error.
+
+### Windows PowerShell verification
+
+```powershell
+cd C:\Users\taku2\General\workspace\mitsubachi-flower\flower
+npm install
+npm run test
+npm run doctor
+npm run build
+npm run install:dev
+```
+
+### AE manual integration checklist
+
+1. Rails側でdevelopment/test限定access tokenを発行する。
+2. `%APPDATA%\Mitsubachi\Flower\config\development.json`へ設定する。
+3. AEを完全終了する。
+4. `npm run install:dev` を実行する。
+5. AEを起動する。
+6. Windowメニューから `flower` panelを開く。
+7. `Connect`を押す。
+8. user / organizationが表示されることを確認する。
+9. `Reload Files`を押す。
+10. 一覧へ動画または画像が表示されることを確認する。
+11. 小さい画像で `Download and Import` を実行する。
+12. cacheへpayloadとmetadataが作成されることを確認する。
+13. AE Project panelへFootageItemが追加されることを確認する。
+14. `Scan Project Metadata`でdrive item IDとhashを確認する。
+15. `.aep`を保存して閉じる。
+16. 再度開きmetadataが復元されることを確認する。
+17. 同じitemで再度操作し、cache hitになることを確認する。
+18. tokenを無効化して401表示を確認する。
+19. 一時的にhash metadataを変え、hash mismatch時にimportされないことを確認する。
+20. logsへtokenが出ていないことを確認する。
+
+AE GUIはこの自動テストでは操作していません。上記は人間が行う結合確認です。
