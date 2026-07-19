@@ -117,3 +117,14 @@ test("FlowerApiClient polls device token with OAuth device grant", async () => {
     assert.equal(result.data.scope, "flower:read flower:download");
   });
 });
+
+test("FlowerApiClient uses access token provider for protected requests", async () => {
+  await withServer((req, res) => {
+    assert.equal(req.headers.authorization, "Bearer memory-token");
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({ id: 1, display_name: "Dev", organization_id: 2, organization_name: "Org", scopes: [] }));
+  }, async (baseUrl) => {
+    const client = new FlowerApiClient({ ...config(baseUrl), developmentAccessToken: "dev-token" }, { version: "0.1.0", accessTokenProvider: () => "memory-token" });
+    await client.me();
+  });
+});
