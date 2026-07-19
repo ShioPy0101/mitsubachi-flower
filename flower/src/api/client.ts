@@ -3,12 +3,15 @@ import https from "node:https";
 import { Readable } from "node:stream";
 import { FlowerConfig } from "../config";
 import { FlowerApiError, httpStatusToCode, toFlowerError } from "./errors";
-import { ApiRequestResult, DownloadHeaders, FlowerDriveItem, FlowerDriveItemsPage, FlowerMe } from "./types";
-import { validateDriveItem, validateDriveItemsPage, validateFlowerMe } from "./validation";
+import { ApiRequestResult, DownloadHeaders, FlowerDeviceAuthorization, FlowerDriveItem, FlowerDriveItemsPage, FlowerMe, FlowerTokenResponse } from "./types";
+import { validateDeviceAuthorization, validateDriveItem, validateDriveItemsPage, validateFlowerMe, validateTokenResponse } from "./validation";
+
+export type AccessTokenProvider = () => string | undefined;
 
 export interface FlowerApiClientOptions {
   version: string;
   platformLabel?: string;
+  accessTokenProvider?: AccessTokenProvider;
 }
 
 export interface StreamResponse {
@@ -17,17 +20,39 @@ export interface StreamResponse {
   stream: Readable;
 }
 
+type HttpMethod = "GET" | "POST";
+
 const MAX_JSON_BYTES = 1024 * 1024;
+const DEVICE_CODE_GRANT = "urn:ietf:params:oauth:grant-type:device_code";
 
 export class FlowerApiClient {
   private readonly userAgent: string;
+  private readonly accessTokenProvider: AccessTokenProvider;
 
   constructor(private readonly config: FlowerConfig, options: FlowerApiClientOptions) {
     this.userAgent = "mitsubachi-flower/" + options.version + " AE-CEP " + (options.platformLabel || "Windows");
+    this.accessTokenProvider = options.accessTokenProvider || (() => this.config.developmentAccessToken || undefined);
+  }
+
+  async startDeviceAuthorization(input: { clientName: string; clientVersion: string; deviceName: string }, signal?: AbortSignal): Promise<ApiRequestResult<FlowerDeviceAuthorization>> {
+    const response = await this.requestJson("POST", "/api/v1/flower/device_authorizations", "device_authorization_start", {
+      client_name: input.clientName,
+      client_version: input.clientVersion,
+      device_name: input.deviceName
+    }, signal, false);
+    return { ...response, data: validateDeviceAuthorization(response.data) };
+  }
+
+  async pollDeviceToken(deviceCode: string, signal?: AbortSignal): Promise<ApiRequestResult<FlowerTokenResponse>> {
+    const response = await this.requestJson("POST", "/api/v1/flower/tokens", "device_token_poll", {
+      grant_type: DEVICE_CODE_GRANT,
+      device_code: deviceCode
+    }, signal, false);
+    return { ...response, data: validateTokenResponse(response.data) };
   }
 
   async me(signal?: AbortSignal): Promise<ApiRequestResult<FlowerMe>> {
-    const response = await this.requestJson("GET", "/api/v1/flower/me", "api_me", undefined, signal);
+    const response = await this.requestJson("GET", "/api/v1/flower/me", "api_me", undefined, signal, true);
     return { ...response, data: validateFlowerMe(response.data) };
   }
 
@@ -37,19 +62,19 @@ export class FlowerApiClient {
     if (params.cursor) search.set("cursor", params.cursor);
     if (params.limit) search.set("limit", String(params.limit));
     const path = "/api/v1/flower/drive_items" + (search.toString() ? "?" + search.toString() : "");
-    const response = await this.requestJson("GET", path, "drive_items_list", undefined, signal);
+    const response = await this.requestJson("GET", path, "drive_items_list", undefined, signal, true);
     return { ...response, data: validateDriveItemsPage(response.data) };
   }
 
   async getDriveItem(id: string, signal?: AbortSignal): Promise<ApiRequestResult<FlowerDriveItem>> {
     assertId(id, "drive_item_show");
-    const response = await this.requestJson("GET", "/api/v1/flower/drive_items/" + encodeURIComponent(id), "drive_item_show", undefined, signal);
+    const response = await this.requestJson("GET", "/api/v1/flower/drive_items/" + encodeURIComponent(id), "drive_item_show", undefined, signal, true);
     return { ...response, data: validateDriveItem(response.data, "drive_item_show") };
   }
 
   async downloadStream(id: string, signal?: AbortSignal): Promise<{ response: StreamResponse; downloadHeaders: DownloadHeaders }> {
     assertId(id, "download_started");
-    const response = await this.requestStream("GET", "/api/v1/flower/drive_items/" + encodeURIComponent(id) + "/download", "download_started", signal);
+    const response = await this.requestStream("GET", "/api/v1/flower/drive_items/" + encodeURIComponent(id) + "/download", "download_started", signal, undefined, "application/octet-stream", true);
     if (response.statusCode < 200 || response.statusCode >= 300) {
       await drain(response.stream);
       throw await this.httpError(response.statusCode, response.headers, "download_started", undefined);
@@ -57,8 +82,8 @@ export class FlowerApiClient {
     return { response, downloadHeaders: extractDownloadHeaders(response.headers) };
   }
 
-  private async requestJson(method: "GET", requestPath: string, operation: string, body?: string, signal?: AbortSignal): Promise<ApiRequestResult<unknown>> {
-    const response = await this.requestStream(method, requestPath, operation, signal, body, "application/json");
+  private async requestJson(method: HttpMethod, requestPath: string, operation: string, body?: unknown, signal?: AbortSignal, authRequired = true): Promise<ApiRequestResult<unknown>> {
+    const response = await this.requestStream(method, requestPath, operation, signal, body === undefined ? undefined : JSON.stringify(body), "application/json", authRequired);
     const requestId = response.headers["x-request-id"];
     const chunks: Buffer[] = [];
     let total = 0;
@@ -81,17 +106,16 @@ export class FlowerApiClient {
     }
   }
 
-  private async requestStream(method: "GET", requestPath: string, operation: string, signal?: AbortSignal, body?: string, accept = "application/octet-stream", redirects = 0): Promise<StreamResponse> {
-    if (!this.config.developmentAccessToken) {
-      throw new FlowerApiError({ code: "config_error", message: "Development access token is not configured.", retryable: false, operation });
+  private async requestStream(method: HttpMethod, requestPath: string, operation: string, signal?: AbortSignal, body?: string, accept = "application/octet-stream", authRequired = true, redirects = 0): Promise<StreamResponse> {
+    const accessToken = this.accessTokenProvider();
+    if (authRequired && !accessToken) {
+      throw new FlowerApiError({ code: "config_error", message: "Access token is not configured.", retryable: false, operation });
     }
     const url = new URL(requestPath, this.config.apiBaseUrl + "/");
     const timeoutMs = operation === "download_started" ? this.config.downloadTimeoutMs : this.config.requestTimeoutMs;
-    const headers: Record<string, string> = {
-      Accept: accept,
-      Authorization: "Bearer " + this.config.developmentAccessToken,
-      "User-Agent": this.userAgent
-    };
+    const headers: Record<string, string> = { Accept: accept, "User-Agent": this.userAgent };
+    if (body !== undefined) headers["Content-Type"] = "application/json";
+    if (authRequired && accessToken) headers.Authorization = "Bearer " + accessToken;
     return new Promise((resolve, reject) => {
       const transport = url.protocol === "https:" ? https : http;
       const request = transport.request(url, { method, headers, timeout: timeoutMs }, (res) => {
@@ -106,7 +130,7 @@ export class FlowerApiClient {
             if (next.origin !== url.origin) {
               throw new FlowerApiError({ code: "invalid_response", message: "Refusing cross-origin authenticated redirect.", retryable: false, operation, httpStatus: statusCode, requestId: headers["x-request-id"] });
             }
-            this.requestStream(method, next.pathname + next.search, operation, signal, body, accept, redirects + 1).then(resolve, reject);
+            this.requestStream(method, next.pathname + next.search, operation, signal, body, accept, authRequired, redirects + 1).then(resolve, reject);
           } catch (error) {
             reject(error);
           }
@@ -148,9 +172,9 @@ export class FlowerApiClient {
       }
     }
     const code = httpStatusToCode(status, serverCode);
-    const retryable = code === "rate_limited" || code === "server_error";
+    const retryable = code === "rate_limited" || code === "server_error" || serverCode === "authorization_pending" || serverCode === "slow_down";
     const safeMessage = code === "unauthorized" ? "Authentication failed." : code === "forbidden" || code === "insufficient_scope" ? "Access to this flower resource is forbidden." : serverMessage && status < 500 ? serverMessage : "Flower API request failed.";
-    return new FlowerApiError({ code, message: safeMessage, retryable, operation, httpStatus: status, requestId });
+    return new FlowerApiError({ code, message: safeMessage, retryable, operation, httpStatus: status, requestId, serverCode });
   }
 }
 
@@ -190,3 +214,7 @@ async function drain(stream: Readable): Promise<void> {
     // drain
   }
 }
+
+
+
+

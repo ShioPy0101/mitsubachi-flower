@@ -19,8 +19,11 @@ test("production config rejects developmentAccessToken", () => {
 });
 
 test("redactSecrets removes tokens and authorization values", () => {
-  const value = redactSecrets('Authorization: Bearer abc developmentAccessToken":"secret" https://x.test/file?token=abc&ok=1');
+  const value = redactSecrets('Authorization: Bearer abc developmentAccessToken":"secret" access_token":"tok-secret" device_code":"dev-secret" https://x.test/file?token=abc&ok=1');
   assert.doesNotMatch(value, /Bearer abc/);
   assert.doesNotMatch(value, /secret/);
   assert.doesNotMatch(value, /token=abc/);
+  assert.doesNotMatch(value, /tok(?!en)|device-secret|dev-secret/);
 });
+
+

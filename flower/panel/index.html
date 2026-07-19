@@ -25,6 +25,8 @@
       </header>
 
       <section class="toolbar">
+        <button id="btn-sign-in">Sign in</button>
+        <button id="btn-sign-out">Sign out</button>
         <button id="btn-connect">Connect</button>
         <button id="btn-reload">Reload Files</button>
         <button id="btn-cancel">Cancel Download</button>
@@ -32,6 +34,22 @@
         <button id="btn-open-log">Open Log Folder</button>
         <button id="btn-copy-diagnostics">Copy Diagnostics</button>
         <button id="btn-scan">Scan Project Metadata</button>
+      </section>
+
+      <section id="auth-panel" class="auth-panel">
+        <h2>Sign in</h2>
+        <div id="auth-state" class="state">Signed out</div>
+        <div class="auth-grid">
+          <div><span>Verification URL</span><strong id="verification-url">none</strong></div>
+          <div><span>User code</span><strong id="user-code">none</strong></div>
+          <div><span>Expires</span><strong id="auth-expires-at">none</strong></div>
+        </div>
+        <div class="toolbar">
+          <button id="btn-open-verification">Open Browser</button>
+          <button id="btn-copy-verification">Copy URL</button>
+          <button id="btn-copy-user-code">Copy Code</button>
+          <button id="btn-cancel-sign-in">Cancel Sign in</button>
+        </div>
       </section>
 
       <section class="search-row">
@@ -72,3 +90,4 @@
     </script>
   </body>
 </html>
+

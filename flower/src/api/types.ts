@@ -25,6 +25,31 @@ export interface FlowerDriveItemsPage {
   nextCursor: string | null;
 }
 
+export interface FlowerDeviceAuthorization {
+  deviceCode: string;
+  userCode: string;
+  verificationUri: string;
+  verificationUriComplete?: string;
+  expiresIn: number;
+  interval: number;
+}
+
+export interface FlowerTokenResponse {
+  tokenType: "Bearer";
+  accessToken: string;
+  expiresIn: number;
+  scope: string;
+  organizationId: string;
+}
+
+export type FlowerDeviceTokenErrorCode =
+  | "authorization_pending"
+  | "slow_down"
+  | "access_denied"
+  | "expired_token"
+  | "invalid_grant"
+  | "invalid_request";
+
 export interface ApiRequestResult<T> {
   data: T;
   requestId?: string;
