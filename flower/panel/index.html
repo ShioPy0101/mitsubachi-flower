@@ -3,28 +3,47 @@
   <head>
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <title>flower development harness</title>
+    <title>flower</title>
     <link rel="stylesheet" href="./dist/style.css" />
   </head>
   <body>
     <main>
       <header>
-        <h1>flower development harness</h1>
+        <h1>flower</h1>
         <div class="status-grid">
-          <div><span>CEP runtime</span><strong id="cep-status">checking</strong></div>
-          <div><span>ExtendScript bridge</span><strong id="bridge-status">checking</strong></div>
+          <div><span>Connection</span><strong id="connection-status">Not configured</strong></div>
+          <div><span>API base URL</span><strong id="api-base-url">not configured</strong></div>
+          <div><span>flower version</span><strong id="flower-version">unknown</strong></div>
           <div><span>After Effects version</span><strong id="ae-version">unknown</strong></div>
-          <div><span>Operating system</span><strong id="os-version">unknown</strong></div>
+          <div><span>User</span><strong id="user-display-name">unknown</strong></div>
+          <div><span>Organization</span><strong id="organization-name">unknown</strong></div>
+          <div><span>Scopes</span><strong id="scopes">none</strong></div>
+          <div><span>Latest request ID</span><strong id="request-id">none</strong></div>
+          <div><span>Last connected</span><strong id="last-connected-at">never</strong></div>
+          <div><span>Bridge</span><strong id="bridge-status">checking</strong></div>
         </div>
       </header>
 
       <section class="toolbar">
-        <button id="btn-probe">Probe AE</button>
-        <button id="btn-import">Import Local File</button>
-        <button id="btn-metadata">Write Metadata</button>
-        <button id="btn-replace">Replace Selected Footage</button>
-        <button id="btn-add-comp">Add To Active Comp</button>
-        <button id="btn-cache">Run Cache Fixture</button>
+        <button id="btn-connect">Connect</button>
+        <button id="btn-reload">Reload Files</button>
+        <button id="btn-cancel">Cancel Download</button>
+        <button id="btn-open-cache">Open Cache Folder</button>
+        <button id="btn-open-log">Open Log Folder</button>
+        <button id="btn-copy-diagnostics">Copy Diagnostics</button>
+        <button id="btn-scan">Scan Project Metadata</button>
+      </section>
+
+      <section class="search-row">
+        <label for="search-input">Search</label>
+        <input id="search-input" type="search" autocomplete="off" />
+        <button id="btn-load-more">Load More</button>
+      </section>
+
+      <section>
+        <h2>Drive Items</h2>
+        <div id="list-state" class="state">Not loaded</div>
+        <div id="items-list" class="items-list"></div>
       </section>
 
       <section class="columns">
@@ -38,6 +57,7 @@
             <button data-log="ui" class="active">CEP UI</button>
             <button data-log="jsx">ExtendScript</button>
             <button data-log="cache">Cache</button>
+            <button data-log="api">API</button>
             <button data-log="error">Errors</button>
           </div>
           <pre id="active-log"></pre>
