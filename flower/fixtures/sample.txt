@@ -1,0 +1,3 @@
+flower fixture sample
+日本語 path and content smoke test
+"quotes" and \ backslash

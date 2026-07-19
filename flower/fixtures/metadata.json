@@ -1,0 +1,7 @@
+{
+  "driveItemId": "fixture-drive-item",
+  "name": "sample.txt",
+  "fileHash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "fileSize": 0,
+  "contentType": "text/plain"
+}

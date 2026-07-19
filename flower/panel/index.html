@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>flower development harness</title>
+    <link rel="stylesheet" href="./dist/style.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>flower development harness</h1>
+        <div class="status-grid">
+          <div><span>CEP runtime</span><strong id="cep-status">checking</strong></div>
+          <div><span>ExtendScript bridge</span><strong id="bridge-status">checking</strong></div>
+          <div><span>After Effects version</span><strong id="ae-version">unknown</strong></div>
+          <div><span>Operating system</span><strong id="os-version">unknown</strong></div>
+        </div>
+      </header>
+
+      <section class="toolbar">
+        <button id="btn-probe">Probe AE</button>
+        <button id="btn-import">Import Local File</button>
+        <button id="btn-metadata">Write Metadata</button>
+        <button id="btn-replace">Replace Selected Footage</button>
+        <button id="btn-add-comp">Add To Active Comp</button>
+        <button id="btn-cache">Run Cache Fixture</button>
+      </section>
+
+      <section class="columns">
+        <div>
+          <h2>Result</h2>
+          <pre id="result-log"></pre>
+        </div>
+        <div>
+          <h2>Logs</h2>
+          <div class="tabs">
+            <button data-log="ui" class="active">CEP UI</button>
+            <button data-log="jsx">ExtendScript</button>
+            <button data-log="cache">Cache</button>
+            <button data-log="error">Errors</button>
+          </div>
+          <pre id="active-log"></pre>
+        </div>
+      </section>
+    </main>
+    <script src="./lib/CSInterface.js"></script>
+    <script>
+      window.module = window.module || { exports: {} };
+      window.exports = window.module.exports;
+      require("../build/panel/src/main.js");
+    </script>
+  </body>
+</html>

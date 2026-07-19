@@ -1,0 +1,110 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: #202124;
+  color: #f1f3f4;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 13px;
+}
+
+main {
+  padding: 16px;
+}
+
+h1 {
+  margin: 0 0 14px;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+h2 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.status-grid div {
+  border: 1px solid #3c4043;
+  border-radius: 6px;
+  padding: 8px;
+  background: #292a2d;
+}
+
+.status-grid span {
+  display: block;
+  color: #bdc1c6;
+  margin-bottom: 4px;
+}
+
+.status-grid strong.ok {
+  color: #81c995;
+}
+
+.status-grid strong.error {
+  color: #f28b82;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+button {
+  min-height: 30px;
+  border: 1px solid #5f6368;
+  border-radius: 5px;
+  color: #f1f3f4;
+  background: #303134;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #3c4043;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.tabs button.active {
+  border-color: #8ab4f8;
+  color: #8ab4f8;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+pre {
+  min-height: 330px;
+  max-height: 520px;
+  margin: 0;
+  padding: 10px;
+  overflow: auto;
+  border: 1px solid #3c4043;
+  border-radius: 6px;
+  background: #17181b;
+  color: #e8eaed;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+@media (max-width: 680px) {
+  .status-grid,
+  .columns {
+    grid-template-columns: 1fr;
+  }
+}
