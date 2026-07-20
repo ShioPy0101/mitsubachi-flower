@@ -8,3 +8,11 @@ test("built CEP panel does not use node: core module specifiers", async () => {
   assert.equal(mainJs.includes('require("node:'), false);
   assert.equal(mainJs.includes("require('node:"), false);
 });
+
+test("CEP panel bootstraps main script from extension absolute path", async () => {
+  const indexHtml = await readFile(path.join(process.cwd(), "panel", "index.html"), "utf8");
+  assert.equal(indexHtml.includes("require(\"../build/panel/src/main.js\")"), false);
+  assert.equal(indexHtml.includes("bootstrapFlowerPanel"), true);
+  assert.equal(indexHtml.includes("path.join(extensionRoot, \"build\", \"panel\", \"src\", \"main.js\")"), true);
+  assert.equal(indexHtml.includes("flower panel bootstrap failed"), true);
+});

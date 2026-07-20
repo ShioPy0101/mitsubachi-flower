@@ -84,10 +84,33 @@
     </main>
     <script src="./lib/CSInterface.js"></script>
     <script>
-      window.module = window.module || { exports: {} };
-      window.exports = window.module.exports;
-      require("../build/panel/src/main.js");
+      (function bootstrapFlowerPanel() {
+        function showBootError(error) {
+          var target = document.getElementById("result-log") || document.body;
+          var message = "flower panel bootstrap failed: " + (error && error.stack ? error.stack : String(error));
+          target.textContent = message;
+        }
+
+        function filePathFromLocation() {
+          var pathname = decodeURIComponent(window.location.pathname || "");
+          if (/^\/[A-Za-z]:\//.test(pathname)) return pathname.slice(1);
+          return pathname;
+        }
+
+        try {
+          var nodeRequire = window.require || (window.cep_node && window.cep_node.require);
+          if (!nodeRequire) throw new Error("CEP Node require is not available. Check --enable-nodejs in CSXS/manifest.xml.");
+          var path = nodeRequire("path");
+          var indexPath = filePathFromLocation();
+          var extensionRoot = path.dirname(path.dirname(indexPath));
+          var entryPath = path.join(extensionRoot, "build", "panel", "src", "main.js");
+          window.module = window.module || { exports: {} };
+          window.exports = window.module.exports;
+          nodeRequire(entryPath);
+        } catch (error) {
+          showBootError(error);
+        }
+      })();
     </script>
   </body>
 </html>
-
