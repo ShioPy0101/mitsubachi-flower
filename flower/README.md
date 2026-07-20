@@ -104,7 +104,7 @@ npm run uninstall:dev
 - ファイルアクセスが拒否される: After Effectsのスクリプト権限とOSのプライバシー設定を確認してください。
 - パスに日本語が含まれる: 自動テストでは文字列エスケープのみ確認済みです。実ファイル読み込みは実機で確認してください。
 - Windowsのバックスラッシュ: CEPからExtendScriptへ渡す値はJSON文字列としてエスケープします。
-- manifestの対象バージョン不一致: `manifest/CSXS/manifest.xml`の`Host Version`と`RequiredRuntime`を検証対象AEに合わせてください。
+- manifestの対象バージョン不一致: `CSXS/manifest.xml`の`Host Version`と`RequiredRuntime`を検証対象AEに合わせてください。
 - キャッシュを削除したい: `flower/cache`を削除してください。After Effectsに読み込み済みの素材参照は別途確認が必要です。
 
 ## 制約
@@ -287,3 +287,10 @@ Token polling behavior:
 - `Sign out`, `Cancel Sign in`, panel teardown, a new sign-in attempt, or expiry stops the current polling loop.
 
 `developmentAccessToken` remains supported for development and mock-server tests, but normal UI usage should prefer `Sign in`. In production builds, plaintext development tokens must not be used. Windows Credential Manager support is intentionally not implemented yet.
+
+
+### CEP extension root layout
+
+Development install links the whole lower directory as the CEP extension root. The manifest must live at lower/CSXS/manifest.xml; MainPath resolves to lower/panel/index.html and ScriptPath resolves to lower/jsx/flower.jsx. 
+pm run install:dev validates all three paths after creating the junction and fails without printing [OK] if any path is missing.
+

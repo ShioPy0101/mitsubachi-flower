@@ -21,7 +21,7 @@ ok("Node.js " + process.version);
 if (Number(process.versions.node.split(".")[0]) < 20) warn("Node.js 20 or newer is recommended for this harness.");
 await checkPath("node_modules", "dependencies installed", "dependencies are not installed. Run npm install.");
 await checkPath("build/panel/src/main.js", "build output found", "build output missing. Run npm run build.");
-await checkPath("manifest/CSXS/manifest.xml", "CEP manifest found", "CEP manifest missing.");
+await checkPath("CSXS/manifest.xml", "CEP manifest found", "CEP manifest missing.");
 await checkPath("jsx/flower.jsx", "ExtendScript bridge found", "jsx/flower.jsx missing.");
 await checkPath("fixtures/sample.txt", "fixture sample found", "fixture sample missing.");
 await checkPath("fixtures/metadata.json", "fixture metadata found", "fixture metadata missing.");
@@ -89,3 +89,4 @@ function cepExtensionsDir() {
   if (process.platform === "darwin") return path.join(os.homedir(), "Library", "Application Support", "Adobe", "CEP", "extensions");
   return path.join(os.homedir(), ".local", "share", "Adobe", "CEP", "extensions");
 }
+
