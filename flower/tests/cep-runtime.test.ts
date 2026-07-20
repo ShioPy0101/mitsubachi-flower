@@ -22,3 +22,9 @@ test("build output includes package metadata required by CEP panel", async () =>
   assert.equal(buildPackageJson.version, "0.1.0");
   assert.equal(buildPackageJson.type, "commonjs");
 });
+
+test("CSInterface shim delegates evalScript to Adobe CEP runtime", async () => {
+  const shim = await readFile(path.join(process.cwd(), "panel", "lib", "CSInterface.js"), "utf8");
+  assert.equal(shim.includes("window.__adobe_cep__.evalScript(script, callback)"), true);
+  assert.equal(shim.includes("CSInterface stub is loaded"), false);
+});
