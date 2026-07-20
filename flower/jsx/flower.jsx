@@ -22,12 +22,62 @@ var flower = (function () {
 
   function parsePayload(payload) {
     if (!payload) return {};
-    return JSON.parse(payload);
+    return parseJson(payload);
+  }
+
+  function parseJson(value) {
+    if (typeof JSON !== "undefined" && JSON.parse) return JSON.parse(value);
+    return eval("(" + value + ")");
   }
 
   function stringify(value) {
     if (typeof JSON !== "undefined" && JSON.stringify) return JSON.stringify(value);
-    return '{"ok":false,"error":{"code":"FLOWER_JSON_UNAVAILABLE","message":"JSON.stringify is unavailable in this ExtendScript engine."}}';
+    return stringifyFallback(value);
+  }
+
+  function stringifyFallback(value) {
+    var type = typeof value;
+    if (value === null) return "null";
+    if (type === "string") return quoteJsonString(value);
+    if (type === "number") return isFinite(value) ? String(value) : "null";
+    if (type === "boolean") return value ? "true" : "false";
+    if (value instanceof Array) {
+      var items = [];
+      for (var i = 0; i < value.length; i += 1) {
+        var item = stringifyFallback(value[i]);
+        items.push(item === undefined ? "null" : item);
+      }
+      return "[" + items.join(",") + "]";
+    }
+    if (type === "object") {
+      var pairs = [];
+      for (var key in value) {
+        if (value.hasOwnProperty(key)) {
+          var itemValue = stringifyFallback(value[key]);
+          if (itemValue !== undefined) pairs.push(quoteJsonString(key) + ":" + itemValue);
+        }
+      }
+      return "{" + pairs.join(",") + "}";
+    }
+    return undefined;
+  }
+
+  function quoteJsonString(value) {
+    var result = "\"";
+    for (var i = 0; i < value.length; i += 1) {
+      var ch = value.charAt(i);
+      var code = value.charCodeAt(i);
+      if (ch === "\"") result += "\\\"";
+      else if (ch === "\\") result += "\\\\";
+      else if (ch === "\b") result += "\\b";
+      else if (ch === "\f") result += "\\f";
+      else if (ch === "\n") result += "\\n";
+      else if (ch === "\r") result += "\\r";
+      else if (ch === "\t") result += "\\t";
+      else if (code < 32) result += "\\u" + ("0000" + code.toString(16)).slice(-4);
+      else result += ch;
+    }
+    return result + "\"";
   }
 
   function projectPath() {
@@ -144,7 +194,7 @@ var flower = (function () {
     if (count > 1) throw new Error("Multiple flower metadata blocks found.");
     var start = comment.indexOf(FLOWER_BEGIN) + FLOWER_BEGIN.length;
     var end = comment.indexOf(FLOWER_END);
-    var metadata = JSON.parse(comment.substring(start, end).replace(/^\s+|\s+$/g, ""));
+    var metadata = parseJson(comment.substring(start, end).replace(/^\s+|\s+$/g, ""));
     if (!metadata || metadata.schema !== "mitsubachi.flower/v1") throw new Error("Malformed flower metadata block.");
     return metadata;
   }
@@ -251,4 +301,6 @@ var flower = (function () {
     }
   };
 })();
+
+
 

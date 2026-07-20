@@ -45,3 +45,11 @@ test("CEP runtime code avoids older Node incompatible APIs", async () => {
   assert.equal(apiClient.includes("transport.request(url,"), false);
   assert.equal(apiClient.includes("transport.request(requestOptions,"), true);
 });
+
+test("ExtendScript bridge provides JSON fallback for older AE engines", async () => {
+  const jsx = await readFile(path.join(process.cwd(), "jsx", "flower.jsx"), "utf8");
+  assert.equal(jsx.includes("function stringifyFallback"), true);
+  assert.equal(jsx.includes("function parseJson"), true);
+  assert.equal(jsx.includes("FLOWER_JSON_UNAVAILABLE"), false);
+  assert.equal(jsx.includes("return JSON.parse(payload)"), false);
+});
