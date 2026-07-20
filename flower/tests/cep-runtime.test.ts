@@ -34,3 +34,10 @@ test("ExtendScript bridge guards optional AVItem global", async () => {
   assert.equal(jsx.includes("typeof AVItem !== \"undefined\" && item instanceof AVItem"), true);
   assert.equal(jsx.includes("if (item instanceof AVItem)"), false);
 });
+
+test("CEP runtime code avoids AbortSignal addEventListener options object", async () => {
+  const apiClient = await readFile(path.join(process.cwd(), "src", "api", "client.ts"), "utf8");
+  const deviceFlow = await readFile(path.join(process.cwd(), "src", "auth", "deviceFlow.ts"), "utf8");
+  assert.equal(apiClient.includes("{ once: true }"), false);
+  assert.equal(deviceFlow.includes("{ once: true }"), false);
+});

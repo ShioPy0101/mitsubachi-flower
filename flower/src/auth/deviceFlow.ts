@@ -95,10 +95,12 @@ function defaultDelay(ms: number, signal?: AbortSignal): Promise<void> {
         reject(cancelled());
         return;
       }
-      signal.addEventListener("abort", () => {
+      var onAbort = function () {
+        if (typeof signal.removeEventListener === "function") signal.removeEventListener("abort", onAbort as EventListener);
         clearTimeout(timer);
         reject(cancelled());
-      }, { once: true });
+      };
+      signal.addEventListener("abort", onAbort as EventListener);
     }
   });
 }

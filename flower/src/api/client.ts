@@ -147,7 +147,9 @@ export class FlowerApiClient {
           request.destroy(new FlowerApiError({ code: "cancelled", message: "Operation was cancelled.", retryable: true, operation }));
           return;
         }
-        signal.addEventListener("abort", () => request.destroy(new FlowerApiError({ code: "cancelled", message: "Operation was cancelled.", retryable: true, operation })), { once: true });
+        addAbortHandler(signal, function onAbort() {
+          request.destroy(new FlowerApiError({ code: "cancelled", message: "Operation was cancelled.", retryable: true, operation }));
+        });
       }
       if (body) request.write(body);
       request.end();
@@ -176,6 +178,14 @@ export class FlowerApiClient {
     const safeMessage = code === "unauthorized" ? "Authentication failed." : code === "forbidden" || code === "insufficient_scope" ? "Access to this flower resource is forbidden." : serverMessage && status < 500 ? serverMessage : "Flower API request failed.";
     return new FlowerApiError({ code, message: safeMessage, retryable, operation, httpStatus: status, requestId, serverCode });
   }
+}
+
+function addAbortHandler(signal: AbortSignal, handler: () => void): void {
+  var wrapped = function () {
+    if (typeof signal.removeEventListener === "function") signal.removeEventListener("abort", wrapped as EventListener);
+    handler();
+  };
+  signal.addEventListener("abort", wrapped as EventListener);
 }
 
 export function extractDownloadHeaders(headers: Record<string, string | undefined>): DownloadHeaders {
@@ -214,7 +224,3 @@ async function drain(stream: Readable): Promise<void> {
     // drain
   }
 }
-
-
-
-
