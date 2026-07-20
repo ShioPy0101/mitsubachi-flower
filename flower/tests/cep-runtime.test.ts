@@ -53,3 +53,8 @@ test("ExtendScript bridge provides JSON fallback for older AE engines", async ()
   assert.equal(jsx.includes("FLOWER_JSON_UNAVAILABLE"), false);
   assert.equal(jsx.includes("return JSON.parse(payload)"), false);
 });
+
+test("CEP sign in identifies the AE 2022 Windows device", async () => {
+  const panelMain = await readFile(path.join(process.cwd(), "panel", "src", "main.ts"), "utf8");
+  assert.equal(panelMain.includes("deviceName: \"After Effects 2022 on Windows\""), true);
+});

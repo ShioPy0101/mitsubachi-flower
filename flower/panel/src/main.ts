@@ -185,7 +185,7 @@ async function signIn(): Promise<void> {
   try {
     const result = await runDeviceAuthorizationFlow({
       client,
-      input: { clientName: "mitsubachi-flower", clientVersion: packageJson.version, deviceName: "After Effects local" },
+      input: { clientName: "mitsubachi-flower", clientVersion: packageJson.version, deviceName: "After Effects 2022 on Windows" },
       signal: controller.signal,
       onState: (state) => {
         if (generation !== signInGeneration) return;
@@ -527,5 +527,3 @@ function bindEvents(): void {
 }
 
 document.addEventListener("DOMContentLoaded", () => initialize().catch((error) => logError(error, "initialize")));
-
-
