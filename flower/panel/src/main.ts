@@ -1,5 +1,5 @@
-import { execFile } from "node:child_process";
-import path from "node:path";
+import { execFile } from "child_process";
+import path from "path";
 import { FlowerApiClient } from "../../src/api/client";
 import { FlowerApiError } from "../../src/api/errors";
 import { FlowerDriveItem, FlowerMe } from "../../src/api/types";

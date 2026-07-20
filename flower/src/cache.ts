@@ -1,10 +1,10 @@
-import { createHash, randomBytes } from "node:crypto";
-import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
-import { createReadStream, createWriteStream } from "node:fs";
-import os from "node:os";
-import path from "node:path";
-import { Readable } from "node:stream";
-import { pipeline } from "node:stream/promises";
+import { createHash, randomBytes } from "crypto";
+import { mkdir, readFile, rename, rm, stat, writeFile } from "fs/promises";
+import { createReadStream, createWriteStream } from "fs";
+import os from "os";
+import path from "path";
+import { Readable } from "stream";
+import { pipeline } from "stream/promises";
 import { FlowerApiError } from "./api/errors";
 import { DownloadHeaders, FlowerDriveItem } from "./api/types";
 

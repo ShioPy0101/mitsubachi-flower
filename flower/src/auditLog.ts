@@ -1,6 +1,6 @@
-import { appendFile, mkdir } from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
+import { appendFile, mkdir } from "fs/promises";
+import os from "os";
+import path from "path";
 import { redactSecrets } from "./redaction";
 
 export type AuditLevel = "debug" | "info" | "warn" | "error";

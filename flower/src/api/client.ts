@@ -1,6 +1,6 @@
-import http from "node:http";
-import https from "node:https";
-import { Readable } from "node:stream";
+import http from "http";
+import https from "https";
+import { Readable } from "stream";
 import { FlowerConfig } from "../config";
 import { FlowerApiError, httpStatusToCode, toFlowerError } from "./errors";
 import { ApiRequestResult, DownloadHeaders, FlowerDeviceAuthorization, FlowerDriveItem, FlowerDriveItemsPage, FlowerMe, FlowerTokenResponse } from "./types";

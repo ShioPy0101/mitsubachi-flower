@@ -1,6 +1,6 @@
-import { readFile } from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
+import { readFile } from "fs/promises";
+import os from "os";
+import path from "path";
 import { FlowerApiError } from "./api/errors";
 
 export interface FlowerConfig {
