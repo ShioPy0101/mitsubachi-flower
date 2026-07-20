@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { FlowerApiError } from "../src/api/errors";
+import { validateDeviceAuthorization } from "../src/api/validation";
 import { activationUrlForDeviceAuthorization, buildActivationUrl, runDeviceAuthorizationFlow, SLOW_DOWN_INCREMENT_SECONDS } from "../src/auth/deviceFlow";
 
 const authorization = {
@@ -26,6 +27,33 @@ test("activationUrlForDeviceAuthorization uses verification_uri_complete without
   assert.equal(activationUrlForDeviceAuthorization({ verificationUri: "http://localhost:3000/flower/activate", verificationUriComplete: url, userCode: "QKQG-6ZF4" }), url);
 });
 
+test("opens verification_uri_complete from the raw API response", async () => {
+  const raw = {
+    device_code: "device-secret",
+    user_code: "QKQG-6ZF4",
+    verification_uri: "http://localhost:3000/flower/activate",
+    verification_uri_complete: "http://localhost:5173/flower/activate?user_code=QKQG-6ZF4",
+    expires_in: 60,
+    interval: 5,
+  };
+  const states: unknown[] = [];
+  let now = 0;
+
+  await runDeviceAuthorizationFlow({
+    client: {
+      startDeviceAuthorization: async () => ({ data: validateDeviceAuthorization(raw), httpStatus: 200 }),
+      pollDeviceToken: async () => ({ data: token(), httpStatus: 200 }),
+    },
+    input: { clientName: "mitsubachi-flower", clientVersion: "0.1.0", deviceName: "AE" },
+    now: () => now,
+    delay: async (ms) => {
+      now += ms;
+    },
+    onState: (state) => states.push(state),
+  });
+
+  assert.equal((states[0] as { activationUrl: string }).activationUrl, "http://localhost:5173/flower/activate?user_code=QKQG-6ZF4");
+});
 test("buildActivationUrl appends user_code while preserving existing query parameters", () => {
   assert.equal(buildActivationUrl("http://localhost:5173/flower/activate?locale=ja", "ABCD EFGH"), "http://localhost:5173/flower/activate?locale=ja&user_code=ABCD+EFGH");
 });
