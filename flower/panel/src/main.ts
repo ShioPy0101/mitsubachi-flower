@@ -153,10 +153,10 @@ function setAuthState(next: AuthenticationState): void {
     setText("user-code", "none");
     setText("auth-expires-at", "none");
   } else if (next.status === "authorizing") {
-    verificationUrlToOpen = next.verificationUriComplete || next.verificationUri;
+    verificationUrlToOpen = next.activationUrl;
     userCodeToCopy = next.userCode;
     setText("auth-state", "Waiting for browser authorization", "warn");
-    setText("verification-url", next.verificationUriComplete || next.verificationUri);
+    setText("verification-url", next.activationUrl);
     setText("user-code", next.userCode);
     setText("auth-expires-at", new Date(next.expiresAt).toISOString());
   } else if (next.status === "signed_in") {
@@ -192,7 +192,7 @@ async function signIn(): Promise<void> {
         setAuthState(state);
         if (state.status === "authorizing" && !browserOpened) {
           browserOpened = true;
-          openVerificationUrl(state.verificationUriComplete || state.verificationUri);
+          openVerificationUrl(state.activationUrl);
         }
       },
       onSlowDown: (interval) => log("api", "device authorization slow_down; next poll interval=" + interval + "s")

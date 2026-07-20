@@ -58,3 +58,13 @@ test("CEP sign in identifies the AE 2022 Windows device", async () => {
   const panelMain = await readFile(path.join(process.cwd(), "panel", "src", "main.ts"), "utf8");
   assert.equal(panelMain.includes("deviceName: \"After Effects 2022 on Windows\""), true);
 });
+
+test("CEP sign in opens and displays the activation URL from auth state", async () => {
+  const panelMain = await readFile(path.join(process.cwd(), "panel", "src", "main.ts"), "utf8");
+  assert.equal(panelMain.includes("openVerificationUrl(state.activationUrl)"), true);
+  assert.equal(panelMain.includes("verificationUrlToOpen = next.activationUrl"), true);
+  assert.equal(panelMain.includes("setText(\"verification-url\", next.activationUrl)"), true);
+  assert.equal(panelMain.includes("localhost:3000/flower/activate"), false);
+  assert.equal(panelMain.includes("localhost:5173/flower/activate"), false);
+  assert.equal(panelMain.includes("replace(\"3000\""), false);
+});

@@ -4,7 +4,7 @@ import { FlowerDeviceAuthorization, FlowerTokenResponse } from "../api/types";
 
 export type AuthenticationState =
   | { status: "signed_out" }
-  | { status: "authorizing"; userCode: string; verificationUri: string; verificationUriComplete?: string; expiresAt: number }
+  | { status: "authorizing"; userCode: string; verificationUri: string; verificationUriComplete?: string; activationUrl: string; expiresAt: number }
   | { status: "signed_in" }
   | { status: "error"; message: string };
 
@@ -39,7 +39,7 @@ export async function runDeviceAuthorizationFlow(options: DeviceAuthorizationPol
   const delay = options.delay || defaultDelay;
   const authorization = (await options.client.startDeviceAuthorization(options.input, options.signal)).data;
   const expiresAt = now() + authorization.expiresIn * 1000;
-  options.onState?.({ status: "authorizing", userCode: authorization.userCode, verificationUri: authorization.verificationUri, verificationUriComplete: authorization.verificationUriComplete, expiresAt });
+  options.onState?.({ status: "authorizing", userCode: authorization.userCode, verificationUri: authorization.verificationUri, verificationUriComplete: authorization.verificationUriComplete, activationUrl: activationUrlForDeviceAuthorization(authorization), expiresAt });
   let intervalSeconds = Math.max(authorization.interval, 1);
   let pollCount = 0;
 
@@ -71,6 +71,15 @@ export async function runDeviceAuthorizationFlow(options: DeviceAuthorizationPol
   }
 }
 
+export function activationUrlForDeviceAuthorization(authorization: Pick<FlowerDeviceAuthorization, "verificationUri" | "verificationUriComplete" | "userCode">): string {
+  return authorization.verificationUriComplete || buildActivationUrl(authorization.verificationUri, authorization.userCode);
+}
+
+export function buildActivationUrl(verificationUri: string, userCode: string): string {
+  const url = new URL(verificationUri);
+  url.searchParams.set("user_code", userCode);
+  return url.toString();
+}
 export function userMessageForDeviceError(code: string): string {
   switch (code) {
     case "access_denied":
