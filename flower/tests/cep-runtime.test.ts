@@ -28,3 +28,9 @@ test("CSInterface shim delegates evalScript to Adobe CEP runtime", async () => {
   assert.equal(shim.includes("window.__adobe_cep__.evalScript(script, callback)"), true);
   assert.equal(shim.includes("CSInterface stub is loaded"), false);
 });
+
+test("ExtendScript bridge guards optional AVItem global", async () => {
+  const jsx = await readFile(path.join(process.cwd(), "jsx", "flower.jsx"), "utf8");
+  assert.equal(jsx.includes("typeof AVItem !== \"undefined\" && item instanceof AVItem"), true);
+  assert.equal(jsx.includes("if (item instanceof AVItem)"), false);
+});

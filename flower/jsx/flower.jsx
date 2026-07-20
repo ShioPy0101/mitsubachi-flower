@@ -42,7 +42,7 @@ var flower = (function () {
       typeName: safeValue(item, "typeName"),
       comment: safeValue(item, "comment")
     };
-    if (item instanceof AVItem) {
+    if (typeof AVItem !== "undefined" && item instanceof AVItem) {
       data.width = safeValue(item, "width");
       data.height = safeValue(item, "height");
       data.duration = safeValue(item, "duration");
@@ -251,3 +251,4 @@ var flower = (function () {
     }
   };
 })();
+
