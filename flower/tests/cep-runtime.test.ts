@@ -16,3 +16,9 @@ test("CEP panel bootstraps main script from extension absolute path", async () =
   assert.equal(indexHtml.includes("path.join(extensionRoot, \"build\", \"panel\", \"src\", \"main.js\")"), true);
   assert.equal(indexHtml.includes("flower panel bootstrap failed"), true);
 });
+
+test("build output includes package metadata required by CEP panel", async () => {
+  const buildPackageJson = JSON.parse(await readFile(path.join(process.cwd(), "build", "package.json"), "utf8"));
+  assert.equal(buildPackageJson.version, "0.1.0");
+  assert.equal(buildPackageJson.type, "commonjs");
+});
