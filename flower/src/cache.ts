@@ -187,10 +187,12 @@ export async function commitDownloadedStream(options: CommitDownloadOptions): Pr
           reject(new FlowerApiError({ code: "cancelled", message: "Download was cancelled.", retryable: true, operation: "download_cancelled", requestId: options.headers.requestId }));
           return;
         }
-        options.signal.addEventListener("abort", () => {
+        var onAbort = function () {
+          if (options.signal && typeof options.signal.removeEventListener === "function") options.signal.removeEventListener("abort", onAbort as EventListener);
           options.stream.destroy(new FlowerApiError({ code: "cancelled", message: "Download was cancelled.", retryable: true, operation: "download_cancelled", requestId: options.headers.requestId }));
           output.destroy();
-        }, { once: true });
+        };
+        options.signal.addEventListener("abort", onAbort as EventListener);
       }
       options.stream.on("data", (chunk: Buffer) => {
         hash.update(chunk);

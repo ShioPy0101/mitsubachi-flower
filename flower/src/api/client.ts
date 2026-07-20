@@ -118,7 +118,16 @@ export class FlowerApiClient {
     if (authRequired && accessToken) headers.Authorization = "Bearer " + accessToken;
     return new Promise((resolve, reject) => {
       const transport = url.protocol === "https:" ? https : http;
-      const request = transport.request(url, { method, headers, timeout: timeoutMs }, (res) => {
+      const requestOptions = {
+        protocol: url.protocol,
+        hostname: url.hostname,
+        port: url.port || undefined,
+        path: url.pathname + url.search,
+        method,
+        headers,
+        timeout: timeoutMs
+      };
+      const request = transport.request(requestOptions, (res) => {
         const headers = normalizeHeaders(res.headers);
         const statusCode = res.statusCode || 0;
         if (isRedirect(statusCode) && headers.location) {
