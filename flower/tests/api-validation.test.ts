@@ -5,46 +5,84 @@ import { validateDriveItem, validateDriveItemsPage, validateFlowerMe } from "../
 const hash = "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
 
 test("validateFlowerMe maps Rails user fields", () => {
-  assert.deepEqual(validateFlowerMe({ id: 1, display_name: "A", organization_id: 2, organization_name: "Org", scopes: ["flower:read"] }), { id: "1", displayName: "A", organizationId: "2", organizationName: "Org", scopes: ["flower:read"] });
+  assert.deepEqual(validateFlowerMe({ id: 1, display_name: "A", organization_id: 2, organization_name: "Org", scopes: ["flower:read"] }), {
+    id: "1",
+    displayName: "A",
+    organizationId: "2",
+    organizationName: "Org",
+    scopes: ["flower:read"],
+  });
 });
 
 test("validateDriveItem accepts Rails file_hash and builds display name", () => {
-  const item = validateDriveItem({ id: 123, name: "sample", extension: "mp4", content_type: "video/mp4", file_size: 10, file_hash: hash, updated_at: "2026-07-20T00:00:00Z", parent_id: null });
+  const item = validateDriveItem({
+    id: 123,
+    name: "sample",
+    extension: "mp4",
+    content_type: "video/mp4",
+    file_size: 10,
+    file_hash: hash,
+    updated_at: "2026-07-20T00:00:00Z",
+    parent_id: null,
+  });
   assert.equal(item.id, "123");
   assert.equal(item.displayName, "sample.mp4");
   assert.equal(item.sha256, hash);
 });
 
 test("validateDriveItem rejects invalid hash and negative size", () => {
-  assert.throws(() => validateDriveItem({ id: 1, name: "bad", extension: "mp4", content_type: "video/mp4", file_size: -1, file_hash: hash, updated_at: "x" }), /file size/);
-  assert.throws(() => validateDriveItem({ id: 1, name: "bad", extension: "mp4", content_type: "video/mp4", file_size: 1, file_hash: "sha256:ABC", updated_at: "x" }), /SHA-256/);
+  assert.throws(
+    () => validateDriveItem({ id: 1, name: "bad", extension: "mp4", content_type: "video/mp4", file_size: -1, file_hash: hash, updated_at: "x" }),
+    /file size/,
+  );
+  assert.throws(
+    () => validateDriveItem({ id: 1, name: "bad", extension: "mp4", content_type: "video/mp4", file_size: 1, file_hash: "sha256:ABC", updated_at: "x" }),
+    /SHA-256/,
+  );
 });
 
 test("validateDriveItemsPage reads items and next_cursor", () => {
-  const page = validateDriveItemsPage({ items: [{ id: 1, name: "image", extension: "png", content_type: "image/png", file_size: 1, file_hash: hash, updated_at: "2026-07-20T00:00:00Z" }], pagination: { next_cursor: "n" }, ignored: true });
+  const page = validateDriveItemsPage({
+    items: [{ id: 1, name: "image", extension: "png", content_type: "image/png", file_size: 1, file_hash: hash, updated_at: "2026-07-20T00:00:00Z" }],
+    pagination: { next_cursor: "n" },
+    ignored: true,
+  });
   assert.equal(page.items.length, 1);
   assert.equal(page.nextCursor, "n");
 });
 
 test("validateDeviceAuthorization maps device authorization response", async () => {
   const { validateDeviceAuthorization } = await import("../src/api/validation");
-  assert.deepEqual(validateDeviceAuthorization({ device_code: "dev", user_code: "ABCD-EFGH", verification_uri: "http://127.0.0.1:3001/flower/activate", verification_uri_complete: "http://127.0.0.1:3001/flower/activate?user_code=ABCD-EFGH", expires_in: 599, interval: 5 }), {
-    deviceCode: "dev",
-    userCode: "ABCD-EFGH",
-    verificationUri: "http://127.0.0.1:3001/flower/activate",
-    verificationUriComplete: "http://127.0.0.1:3001/flower/activate?user_code=ABCD-EFGH",
-    expiresIn: 599,
-    interval: 5
-  });
+  assert.deepEqual(
+    validateDeviceAuthorization({
+      device_code: "dev",
+      user_code: "ABCD-EFGH",
+      verification_uri: "http://localhost:3000/flower/activate",
+      verification_uri_complete: "http://localhost:3000/flower/activate?user_code=ABCD-EFGH",
+      expires_in: 599,
+      interval: 5,
+    }),
+    {
+      deviceCode: "dev",
+      userCode: "ABCD-EFGH",
+      verificationUri: "http://localhost:3000/flower/activate",
+      verificationUriComplete: "http://localhost:3000/flower/activate?user_code=ABCD-EFGH",
+      expiresIn: 599,
+      interval: 5,
+    },
+  );
 });
 
 test("validateTokenResponse maps bearer token response", async () => {
   const { validateTokenResponse } = await import("../src/api/validation");
-  assert.deepEqual(validateTokenResponse({ token_type: "Bearer", access_token: "secret", expires_in: 900, scope: "flower:read flower:download", organization_id: "1" }), {
-    tokenType: "Bearer",
-    accessToken: "secret",
-    expiresIn: 900,
-    scope: "flower:read flower:download",
-    organizationId: "1"
-  });
+  assert.deepEqual(
+    validateTokenResponse({ token_type: "Bearer", access_token: "secret", expires_in: 900, scope: "flower:read flower:download", organization_id: "1" }),
+    {
+      tokenType: "Bearer",
+      accessToken: "secret",
+      expiresIn: 900,
+      scope: "flower:read flower:download",
+      organizationId: "1",
+    },
+  );
 });

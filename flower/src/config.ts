@@ -70,7 +70,7 @@ export function parseFlowerConfig(raw: unknown, configPath = flowerConfigPath(),
     downloadTimeoutMs: positiveInteger(record.downloadTimeoutMs, DEFAULT_DOWNLOAD_TIMEOUT_MS, "downloadTimeoutMs", configPath),
     maxConcurrentDownloads: positiveInteger(record.maxConcurrentDownloads, 1, "maxConcurrentDownloads", configPath),
     configPath,
-    environment
+    environment,
   };
 }
 
@@ -108,9 +108,15 @@ function positiveInteger(value: unknown, fallback: number, field: string, config
 }
 
 function isLocalhost(hostname: string): boolean {
-  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+  return hostname === "localhost" || hostname === "localhost" || hostname === "::1";
 }
 
 function configError(message: string, configPath: string, cause?: unknown): FlowerApiError {
-  return new FlowerApiError({ code: "config_error", message, retryable: false, operation: "config_loaded", causeName: cause instanceof Error ? cause.name : undefined });
+  return new FlowerApiError({
+    code: "config_error",
+    message,
+    retryable: false,
+    operation: "config_loaded",
+    causeName: cause instanceof Error ? cause.name : undefined,
+  });
 }

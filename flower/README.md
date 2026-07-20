@@ -201,7 +201,7 @@ Example shape:
 
 `developmentAccessToken` is for development/test only. It is intentionally rejected when `FLOWER_ENV=production` or `NODE_ENV=production`. Do not use this plaintext token config for production builds. Production auth should replace this path with the flower device-code flow and OS credential storage.
 
-`apiBaseUrl` is normalized by removing trailing slashes. HTTPS is required except localhost development URLs such as `http://localhost:3001`.
+`apiBaseUrl` is normalized by removing trailing slashes. HTTPS is required except localhost development URLs such as `http://localhost:3000`.
 
 ### Cache structure
 
@@ -288,9 +288,7 @@ Token polling behavior:
 
 `developmentAccessToken` remains supported for development and mock-server tests, but normal UI usage should prefer `Sign in`. In production builds, plaintext development tokens must not be used. Windows Credential Manager support is intentionally not implemented yet.
 
-
 ### CEP extension root layout
 
-Development install links the whole lower directory as the CEP extension root. The manifest must live at lower/CSXS/manifest.xml; MainPath resolves to lower/panel/index.html and ScriptPath resolves to lower/jsx/flower.jsx. 
+Development install links the whole lower directory as the CEP extension root. The manifest must live at lower/CSXS/manifest.xml; MainPath resolves to lower/panel/index.html and ScriptPath resolves to lower/jsx/flower.jsx.
 pm run install:dev validates all three paths after creating the junction and fails without printing [OK] if any path is missing.
-
